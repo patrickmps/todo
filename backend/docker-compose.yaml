@@ -1,0 +1,40 @@
+services:
+  database:
+    image: postgres:latest
+    container_name: postgres
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    env_file:
+      - .env
+    ports:
+      - "5050:80"
+    depends_on:
+      - database
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: todolist-backend
+    ports:
+      - "3000:3000"
+      - "5555:5555"
+    depends_on:
+      - database
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - todolist-backend_node-modules:/app/node_modules
+
+volumes:
+  postgres-data:
+  todolist-backend_node-modules:

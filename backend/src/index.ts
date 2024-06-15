@@ -20,8 +20,8 @@ app.use(middleware.requestLogger);
 app.use(middleware.tokenExtractor);
 
 app.use("/api/auth", authRouter);
-app.use("/api/users", middleware.auth, usersRouter);
-app.use("/api/todos", middleware.auth, todosRouter);
+app.use("/api/users", middleware.auth, middleware.userExtractor, usersRouter);
+app.use("/api/todos", middleware.auth, middleware.userExtractor, todosRouter);
 
 app.use(middleware.unknownEndpoint);
 app.use(middleware.errorHandler);

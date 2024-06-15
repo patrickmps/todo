@@ -1,30 +1,52 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { excludeField } from "../utils/prisma";
-import { User, UserCreate, UserWithoutPassword } from "../@types/userTypes";
-import { Response, response } from "express";
+import { UserCreate, UserWithoutPassword } from "../@types/userTypes";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 const prisma = new PrismaClient();
 
-const getAll = async (): Promise<UserWithoutPassword[]> => {
-	const users = await prisma.user.findMany({ include: { _count: true } });
+const getAll = async (): Promise<{
+	statusCode: number;
+	content: UserWithoutPassword[] | string;
+}> => {
+	try {
+		const users = await prisma.user.findMany({ include: { _count: true } });
 
-	const usersWithoutPass = users.map((user) =>
-		excludeField(user, ["passwordHash"])
-	);
+		const usersWithoutPass = users.map((user) =>
+			excludeField(user, ["passwordHash"])
+		);
 
-	return usersWithoutPass;
+		return { statusCode: 200, content: usersWithoutPass };
+	} catch (error) {
+		if (error instanceof Error) {
+			return { statusCode: 400, content: error.message };
+		}
+		return { statusCode: 400, content: "Unknown error" };
+	}
 };
 
-const getOne = async (id: string) => {
-	const user = await prisma.user.findUnique({
-		where: {
-			id: id,
-		},
-		include: { _count: true, todos: true },
-	});
+const getOne = async (
+	id: string
+): Promise<{ statusCode: number; content: UserWithoutPassword | string }> => {
+	try {
+		const user = await prisma.user.findUnique({
+			where: {
+				id: id,
+			},
+			include: { _count: true, todos: true },
+		});
 
-	return user ? excludeField(user, ["passwordHash"]) : {};
+		return {
+			statusCode: 200,
+			content: user ? excludeField(user, ["passwordHash"]) : "User not found",
+		};
+	} catch (error) {
+		if (error instanceof Error) {
+			return { statusCode: 400, content: error.message };
+		}
+		return { statusCode: 400, content: "Unknown error" };
+	}
 };
 
 const create = async (
@@ -72,12 +94,21 @@ const create = async (
 	}
 };
 
-const update = () => {};
-
 const remove = async (id: string) => {
 	try {
+		if (!id) {
+			return { statusCode: 401 };
+		}
 		await prisma.user.delete({ where: { id } });
+
+		return { statusCode: 204 };
 	} catch (error) {
+		if (error instanceof PrismaClientKnownRequestError) {
+			if (error.code === "P2025") {
+				return { statusCode: 200, content: "User not found" };
+			}
+			return { statusCode: 400, content: error.message };
+		}
 		if (error instanceof Error) {
 			return { statusCode: 400, content: error.message };
 		}
@@ -85,4 +116,4 @@ const remove = async (id: string) => {
 	}
 };
 
-export default { getAll, getOne, create, update, remove };
+export default { getAll, getOne, create, remove };

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { PrismaClient } from "@prisma/client";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { info, error as logError } from "./logger";
+import { excludeField } from "./prisma";
 
 const prisma = new PrismaClient();
 
@@ -28,7 +29,6 @@ interface CustomRequest extends Request {
 	user?: {
 		id: string;
 		email: string;
-		passwordHash: string;
 		name: string | null;
 	} | null;
 }
@@ -65,9 +65,13 @@ const userExtractor = async (
 				res.status(401).json({ error: "token invalid" });
 				return;
 			}
-			req.user = await prisma.user.findUnique({
+			const user = await prisma.user.findUnique({
 				where: { id: decodedToken.id },
 			});
+
+			if (user) {
+				req.user = excludeField(user, ["passwordHash"]);
+			}
 		} catch (err) {
 			next(err);
 			return;

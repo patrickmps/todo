@@ -1,9 +1,4 @@
-type User = {
-	id: string;
-	email: string;
-	name: string | null;
-	passwordHash: string;
-};
+import { User } from "@prisma/client";
 
 type UserWithoutPassword = Omit<User, "passwordHash">;
 
@@ -13,4 +8,4 @@ type UserCreate = Omit<User, "id" | "_count" | "passwordHash"> & {
 	password: string;
 };
 
-export { User, UserWithoutPassword, UserCreate };
+export { UserWithoutPassword, UserCreate, UserWithCountTodos };

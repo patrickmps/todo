@@ -1,0 +1,3 @@
+/dist/
+/prisma/
+docker-compose.yaml

@@ -1,6 +1,6 @@
-import { Todo } from "@prisma/client";
+import { Todo } from '@prisma/client';
 
-type TodoCreate = Pick<Todo, "note" | "userId">;
-type TodoUpdate = Omit<Todo, "createdAt" | "uodatedAt">;
+type TodoCreate = Pick<Todo, 'note' | 'userId'>;
+type TodoUpdate = Omit<Todo, 'createdAt' | 'uodatedAt'>;
 
 export { TodoCreate, TodoUpdate };

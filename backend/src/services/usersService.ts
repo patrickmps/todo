@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { excludeField } from '../utils/prisma';
 import { UserCreate, UserWithoutPassword } from '../@types/userTypes';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { ZodError, z } from 'zod';
 
 const prisma = new PrismaClient();
 
@@ -49,35 +50,24 @@ const getOne = async (
   }
 };
 
-const create = async (
-  object: Partial<UserCreate>
-): Promise<{ statusCode: number; content: UserWithoutPassword | string }> => {
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+const create = async (object: Partial<UserCreate>) => {
   const passwordRegex =
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+  const userSchema = z.object({
+    email: z.string().email(),
+    password: z.string().min(6).regex(passwordRegex),
+    name: z.string()
+  });
 
-  if (!object.email || !object.name || !object.password) {
-    return {
-      statusCode: 400,
-      content: 'Email, name, and password fields are required'
-    };
-  }
-
-  if (!emailRegex.test(object.email)) {
-    return { statusCode: 400, content: 'Invalid email format' };
-  }
-
-  if (!passwordRegex.test(object.password)) {
-    return { statusCode: 400, content: 'Invalid password format' };
-  }
+  const data = userSchema.parse(object);
 
   const saltRounds = 10;
-  const passwordHash = await bcrypt.hash(object.password, saltRounds);
+  const passwordHash = await bcrypt.hash(data.password, saltRounds);
 
   try {
     const existingUser = await prisma.user.findUnique({
       where: {
-        email: object.email
+        email: data.email
       }
     });
 
@@ -87,13 +77,16 @@ const create = async (
 
     const user = await prisma.user.create({
       data: {
-        email: object.email,
+        email: data.email,
         passwordHash,
-        name: object.name
+        name: data.name
       }
     });
     return { statusCode: 200, content: excludeField(user, ['passwordHash']) };
   } catch (error: unknown) {
+    if (error instanceof ZodError) {
+      return { statusCode: 400, content: error.issues };
+    }
     if (error instanceof Error) {
       return { statusCode: 400, content: error.message };
     }

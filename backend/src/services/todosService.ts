@@ -1,6 +1,7 @@
 import { PrismaClient, Todo } from '@prisma/client';
 import { TodoCreate, TodoUpdate } from '../@types/todoTypes';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { z, ZodError } from 'zod';
 
 const prisma = new PrismaClient();
 
@@ -49,17 +50,27 @@ const getOne = async ({
 
 const create = async (todo: Partial<TodoCreate>) => {
   try {
-    if (todo?.note?.trim().length === 0) {
-      return { statusCode: 400, content: 'Note cannot be empty' };
-    }
+    const createTodoSchema = z.object({
+      note: z
+        .string()
+        .min(1, 'Note cannot be empty')
+        .max(255, 'Note cannot be longer than 255 characters'),
+      userId: z.string().uuid('Invalid user ID')
+    });
+
+    const data = createTodoSchema.parse(todo);
+
     const createdTodo = await prisma.todo.create({
       data: {
-        userId: todo.userId!,
-        note: todo.note!
+        userId: data.userId,
+        note: data.note
       }
     });
-    return { statusCode: 200, content: createdTodo };
+    return { statusCode: 201, content: createdTodo };
   } catch (error) {
+    if (error instanceof ZodError) {
+      return { statusCode: 400, content: error.issues };
+    }
     if (error instanceof Error) {
       return { statusCode: 400, content: error.message };
     }
@@ -69,19 +80,37 @@ const create = async (todo: Partial<TodoCreate>) => {
 
 const update = async (todo: Partial<TodoUpdate>) => {
   try {
+    const updateTodoSchema = z
+      .object({
+        id: z.string().uuid('Invalid todo ID'),
+        userId: z.string().uuid('Invalid user ID'),
+        note: z
+          .string()
+          .min(1, 'Note cannot be empty')
+          .max(255, 'Note cannot be longer than 255 characters'),
+        done: z.boolean()
+      })
+      .partial();
+
+    const data = updateTodoSchema.parse(todo);
+
     const updatedTodo = await prisma.todo.update({
       where: {
-        id: todo.id,
-        userId: todo.userId
+        id: data.id,
+        userId: data.userId
       },
       data: {
-        note: todo.note,
-        done: todo.done
+        note: data.note,
+        done: data.done
       }
     });
 
     return { statusCode: 200, content: updatedTodo };
   } catch (error) {
+    if (error instanceof ZodError) {
+      return { statusCode: 400, content: error.issues };
+    }
+
     if (error instanceof PrismaClientKnownRequestError) {
       if (error.code === 'P2025') {
         return { statusCode: 400, content: 'Todo not found' };

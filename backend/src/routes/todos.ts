@@ -36,4 +36,11 @@ router.put(
   }
 );
 
+router.delete('/:id', async (req: CustomRequest, res: Response) => {
+  const userId = req.user?.id as string;
+  const { id: todoId } = req.params as { id: string };
+  const result = await todosService.remove({ todoId, userId });
+  res.status(result.statusCode).json(result.content);
+});
+
 export default router;

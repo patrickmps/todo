@@ -125,4 +125,34 @@ const update = async (todo: Partial<TodoUpdate>) => {
   }
 };
 
-export default { getAll, getOne, create, update };
+const remove = async (object: { todoId: string; userId: string }) => {
+  try {
+    const deleteTodoSchema = z.object({
+      todoId: z.string().uuid('Invalid todo ID'),
+      userId: z.string().uuid('Invalid user ID')
+    });
+    const data = deleteTodoSchema.parse(object);
+
+    await prisma.todo.delete({
+      where: {
+        id: data.todoId,
+        userId: data.userId
+      }
+    });
+
+    return { statusCode: 204 };
+  } catch (error) {
+    if (error instanceof PrismaClientKnownRequestError) {
+      if (error.code === 'P2025') {
+        return { statusCode: 200, content: 'Todo not found' };
+      }
+      return { statusCode: 400, content: error.message };
+    }
+    if (error instanceof Error) {
+      return { statusCode: 400, content: error.message };
+    }
+    return { statusCode: 400, content: 'Unknown error' };
+  }
+};
+
+export default { getAll, getOne, create, update, remove };

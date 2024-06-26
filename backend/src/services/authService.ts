@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import {
+  PrismaClientInitializationError,
+  PrismaClientKnownRequestError
+} from '@prisma/client/runtime/library';
 import { z, ZodError } from 'zod';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
@@ -67,6 +70,10 @@ const login = async (object: { email: string; password: string }) => {
     if (error instanceof ZodError) {
       // Retorna um código de status 400 e os erros de validação se o objeto do usuário falhar na validação
       return { statusCode: 400, content: error.issues };
+    }
+    if (error instanceof PrismaClientInitializationError) {
+      // Retorna um código de status 500 e uma mensagem de erro se o PrismaClient falhar ao inicializar
+      return { statusCode: 500, content: "Can't connect to database" };
     }
     if (error instanceof PrismaClientKnownRequestError) {
       if (error.code === 'P2025') {

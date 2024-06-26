@@ -3,9 +3,11 @@ services:
     image: postgres:latest
     container_name: postgres
     env_file:
-      - .env
+      - ./backend/.env
     ports:
       - "5432:5432"
+    networks:
+      - app-network
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
@@ -13,28 +15,46 @@ services:
     image: dpage/pgadmin4
     container_name: pgadmin
     env_file:
-      - .env
+      - ./backend/.env
     ports:
       - "5050:80"
+    networks:
+      - app-network
     depends_on:
       - database
 
   backend:
     build:
-      context: .
+      context: ./backend/
       dockerfile: Dockerfile
     container_name: todolist-backend
-    ports:
-      - "3000:3000"
-      - "5555:5555"
+    networks:
+      - app-network
     depends_on:
       - database
     env_file:
-      - .env
+      - ./backend/.env
     volumes:
-      - .:/app
+      - ./backend:/app
       - todolist-backend_node-modules:/app/node_modules
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./default.conf:/etc/nginx/default.conf
+    ports:
+      - "8080:80"
+    networks:
+      - app-network
+    depends_on:
+      - backend
 
 volumes:
   postgres-data:
   todolist-backend_node-modules:
+
+
+networks:
+  app-network:

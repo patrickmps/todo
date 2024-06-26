@@ -12,4 +12,9 @@ RUN npm install -g prisma
 
 RUN prisma generate
 
-CMD ["npm", "run", "dev"]
+RUN npm run build
+
+RUN npm install -g pm2 && npm install
+
+CMD ["pm2-runtime", "start", "ecosystem.config.js"]
+# CMD ["pm2-runtime", "start", "ecosystem.config.js", "--env", "production"]
